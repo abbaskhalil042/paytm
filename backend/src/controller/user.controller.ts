@@ -3,6 +3,8 @@ import z from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../model/user.model";
+import { AuthenticatedRequest } from "../middleware/auth";
+import Account from "../model/account.model";
 
 const userSchema = z.object({
   name: z.string(),
@@ -37,6 +39,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       password: hashedPassword,
     });
 
+    const userId = user._id;
+
+    await Account.create({
+      userId,
+      balance: 1 + Math.random() * 10000,
+    });
     res.status(201).json({
       message: "User created successfully",
       user,
@@ -88,6 +96,82 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       message: "Login successful",
       token,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
+
+//?updating name and password
+const updateSchema = z.object({
+  name: z.string(),
+  password: z.string().min(6),
+});
+export const update = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { success } = updateSchema.safeParse(req.body);
+
+    if (!success) {
+      res.status(400).json({ message: "Invalid request body" });
+      return;
+    }
+
+    const { name, password } = req.body;
+
+    const updateUser = await User.findOneAndUpdate(
+      {
+        _id: req.id as string,
+      },
+      {
+        $set: {
+          name,
+          password,
+        },
+      },
+      {
+        new: true,
+      }
+    );
+
+    res.status(200).json({
+      message: "User updated successfully",
+      user: updateUser,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
+
+//?getting all user from db
+
+export const getAlluser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const filter = (req.query.filter as string) || "";
+
+    const users = await User.find({
+      name: { $regex: filter },
+      // name: { $regex: filter, $options: "i" },
+    });
+
+    res.status(200).json({
+      message: "Users fetched successfully",
+      users: users.map((user) => {
+        return {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+        };
+      }),
     });
   } catch (error: any) {
     console.log(error.message);
