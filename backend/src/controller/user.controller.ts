@@ -9,19 +9,18 @@ import Account from "../model/account.model";
 const userSchema = z.object({
   name: z.string(),
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(5),
 });
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { success } = userSchema.safeParse(req.body);
-
     if (!success) {
       res.status(400).json({ message: "Invalid request body" });
       return;
     }
-
     const { name, email, password } = req.body;
+    console.log(name, email, password);
 
     const existingUser = await User.findOne({
       email,
@@ -39,10 +38,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       password: hashedPassword,
     });
 
-    const userId = user._id;
-
     await Account.create({
-      userId,
+      id: user.id as string,
       balance: 1 + Math.random() * 10000,
     });
     res.status(201).json({
@@ -57,9 +54,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 };
 
 //? login
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(5),
+});
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { success } = userSchema.safeParse(req.body);
+    const { success } = loginSchema.safeParse(req.body);
 
     if (!success) {
       res.status(400).json({ message: "Invalid request body" });
@@ -67,6 +68,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
     const { email, password } = req.body;
 
+    console.log(email, password);
     const user = await User.findOne({
       email,
     });
@@ -85,7 +87,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const token = jwt.sign(
       {
-        id: user._id,
+        id: user.id,
       },
       process.env.JWT_SECRET as string,
       {
@@ -107,7 +109,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 //?updating name and password
 const updateSchema = z.object({
   name: z.string(),
-  password: z.string().min(6),
+  password: z.string().min(5),
 });
 export const update = async (
   req: AuthenticatedRequest,
@@ -125,7 +127,7 @@ export const update = async (
 
     const updateUser = await User.findOneAndUpdate(
       {
-        _id: req.id as string,
+        id: req.id as string,
       },
       {
         $set: {
@@ -167,7 +169,7 @@ export const getAlluser = async (
       message: "Users fetched successfully",
       users: users.map((user) => {
         return {
-          id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
         };

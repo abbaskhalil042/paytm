@@ -8,10 +8,10 @@ import {
 import { auth } from "../middleware/auth";
 
 const userRouter = express.Router();
-
+// /api/v1/user/all-user
 userRouter.post("/register", register);
 userRouter.post("/login", login);
 userRouter.put("/update", auth, update);
-userRouter.put("/all-user", auth, getAlluser);
+userRouter.get("/all-user", auth, getAlluser);
 
 export default userRouter;
